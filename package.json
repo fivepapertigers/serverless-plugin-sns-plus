@@ -1,0 +1,17 @@
+{
+  "name": "serverless-plugin-sns-plus",
+  "version": "0.1.0",
+  "description": "Sample Application",
+  "main": "index.js",
+  "scripts": {
+    "test": "jasmine --config=./jasmine.json",
+    "lint": "eslint src/**/*.js"
+  },
+  "author": "successacademies",
+  "license": "ISC",
+  "devDependencies": {
+    "babel-eslint": "^8.0.2",
+    "eslint": "^4.11.0",
+    "jasmine": "^2.8.0"
+  }
+}

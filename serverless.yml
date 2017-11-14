@@ -1,0 +1,19 @@
+service: test-sns-plus
+
+plugins:
+  - /Users/jgriswold-moran/serverless-plugin-sns-plus/src/index.js
+
+provider:
+  name: aws
+  region: us-east-1
+  timeout: 30
+  profile: personal
+
+package:
+  exclude: node_modules/**
+
+functions:
+  handler1:
+    handler: someHandler.main
+    events:
+      - snsPlus: mySNSTopic
