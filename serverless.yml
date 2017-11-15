@@ -15,5 +15,7 @@ package:
 functions:
   handler1:
     handler: someHandler.main
+    environment:
+      TOPIC: ${snsPlus:myOtherTopic}
     events:
       - snsPlus: mySNSTopic
