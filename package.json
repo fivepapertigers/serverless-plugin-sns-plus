@@ -1,17 +1,32 @@
 {
   "name": "serverless-plugin-sns-plus",
   "version": "0.1.0",
-  "description": "Sample Application",
-  "main": "index.js",
+  "description": "Serverless Plugin SNS Plus",
+  "main": "src/index.js",
   "scripts": {
     "test": "jasmine --config=./jasmine.json",
     "lint": "eslint src/**/*.js"
   },
-  "author": "successacademies",
-  "license": "ISC",
+  "author": "Jacob Griswold-Moran",
+  "license": "MIT",
   "devDependencies": {
     "babel-eslint": "^8.0.2",
     "eslint": "^4.11.0",
     "jasmine": "^2.8.0"
-  }
+  },
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fivepapertigers/serverless-plugin-sns-plus.git"
+  },
+  "keywords": [
+    "serverless",
+    "plugin",
+    "sns",
+    "aws"
+  ],
+  "bugs": {
+    "url": "https://github.com/fivepapertigers/serverless-plugin-sns-plus/issues"
+  },
+  "homepage": "https://github.com/fivepapertigers/serverless-plugin-sns-plus#readme"
 }
