@@ -1,17 +1,22 @@
 /* eslint-env node */
 
 const BbPromise = require("bluebird");
+const snsPlusSyntax = RegExp(/^snsPlus:/g);
+const fs = require("fs");
+const path = require("path");
+
+
 
 
 class ServerlessSNSPlusPlugin {
 
     /** Sets custom Serverless hooks */
     constructor(serverless, options) {
-
         this.serverless = serverless;
         this.options = options;
         this.provider = this.serverless.getProvider("aws");
         this.currentTopics = [];
+        this.topicRefs = [];
         this.hooks = {
             "before:package:initialize": () => BbPromise.bind(this)
                 .then(this.convertToSNSEvents),
@@ -21,6 +26,8 @@ class ServerlessSNSPlusPlugin {
             "after:deploy:deploy": () => BbPromise.bind(this)
                 .then(this.cleanUpOrphanedTopics)
         };
+        this.overrideGetValueFromSource();
+        this.validateServerlessVersion()
     }
 
     /**
@@ -57,7 +64,7 @@ class ServerlessSNSPlusPlugin {
             this.currentTopics.map(topicArn => {
                 return this.provider.request(
                     "SNS", "getTopicAttributes", {TopicArn: topicArn},
-                    this.options.stage, this.options.region
+                    this.options.stage, this.getRegion()
                 )
                 .then(resp => {
                     if (resp && resp.Attributes.SubscriptionsPending === "0" &&
@@ -65,7 +72,7 @@ class ServerlessSNSPlusPlugin {
 
                         return this.provider.request(
                             "SNS", "deleteTopic", {TopicArn: topicArn},
-                            this.options.stage, this.options.region
+                            this.options.stage, this.getRegion()
                         );
                     }
                     return null;
@@ -96,9 +103,12 @@ class ServerlessSNSPlusPlugin {
         this.serverless.cli.log("Creating SNSPlus topics...");
         return BbPromise.all(
             this.allSNSPlusTopics().map(topicName =>
+                // Note: if an SNS topic already exists, this call will still
+                // return a successful response. No need to pre-determine
+                // existence.
                 this.provider.request(
                     "SNS", "createTopic", {Name: topicName},
-                    this.options.stage, this.options.region
+                    this.options.stage, this.getRegion()
                 )
             )
         ).then(() => this.serverless.cli.log("SNSPlus topics created."));
@@ -114,7 +124,8 @@ class ServerlessSNSPlusPlugin {
         return this.allSNSPlusFunctions()
             .reduce((events, func) => events.concat(func.events), [])
             .filter(event => event.snsPlus)
-            .map(event => event.snsPlus);
+            .map(event => event.snsPlus)
+            .concat(this.topicRefs);
     }
 
     /**
@@ -146,7 +157,7 @@ class ServerlessSNSPlusPlugin {
             "CloudFormation", "getTemplate",
             {StackName: this.provider.naming.getStackName()},
             this.options.stage,
-            this.options.region)
+            this.getRegion())
         // If stack doesn't exist, return empty template
         .catch(() => {
             return {TemplateBody: {Resources: {}}};
@@ -175,7 +186,7 @@ class ServerlessSNSPlusPlugin {
         return this.provider.request(
             "STS", "getCallerIdentity", {},
             this.options.stage,
-            this.options.region
+            this.getRegion()
         ).then(data => {
             this.accountId = data.Account;
             return this.accountId;
@@ -190,7 +201,74 @@ class ServerlessSNSPlusPlugin {
      * @return {string}
      */
     formatSNSArn(accountId, topicName) {
-        return `arn:aws:sns:${this.options.region}:${accountId}:${topicName}`;
+        return `arn:aws:sns:${this.getRegion()}:${accountId}:${topicName}`;
+    }
+
+
+    /** Wraps the serverless Variable object's `getValueFromSource` method
+        with one that can also handle snsPlus variable syntax
+    */
+    overrideGetValueFromSource() {
+        const originalMethod = this.serverless.variables.getValueFromSource;
+        const self = this;
+        function getValueFromSource(variableString) {
+            if (variableString.match(snsPlusSyntax)){
+                return self.loadAndReplaceTopicFromVariable(variableString);
+            }
+            return originalMethod(variableString);
+        }
+        this.serverless.variables.getValueFromSource =
+            getValueFromSource.bind(this.serverless.variables);
+    }
+
+    /**
+     * Gets the AWS for this serverless deployment. Defauls to `us-east-1`
+     * @return {string} region name
+     */
+    getRegion() {
+        return this.options.region
+            || (this.serverless.service.provider && this.serverless.service.provider.region)
+            || "us-east-1";
+    }
+
+    /**
+     * Stores a topic referenced with the `${snsPlus:<topic>}` variable injection
+     * and returns the Arn for that SNS topic.
+     * @param  {string} variableString `${snsPlus:<topic>}` variable string
+     * @return {string} Arn for the SNS topic
+     */
+    loadAndReplaceTopicFromVariable(variableString) {
+        const topicName = variableString.replace(snsPlusSyntax, "");
+        return this.getAccountId().then(accountId => {
+            this.topicRefs.push(topicName);
+            return this.formatSNSArn(accountId, topicName);
+        });
+    }
+
+
+    /**
+     * Validates that the serverless version is compatible with this plugin
+     * @return {string} serverless semver
+     */
+    validateServerlessVersion() {
+        if (this.getServerlessVersion() < "1.13.0") {
+            throw new this.serverless.classes.Error(
+                "Incompatible serverless version:\n\n" +
+                "Serverless version must be at least 1.13.0 to work with " +
+                "the SNS Plus plugin."
+            );
+        }
+    }
+
+    /**
+     * Gets the current serverless version
+     * @return {string} serverless semver
+     */
+    getServerlessVersion() {
+        const slsPath = this.serverless.config.serverlessPath;
+        const filePath = path.join(path.dirname(slsPath), "package.json");
+        const packageJSON = JSON.parse(fs.readFileSync(filePath, "utf8"));
+        return packageJSON.version;
     }
 }
 
