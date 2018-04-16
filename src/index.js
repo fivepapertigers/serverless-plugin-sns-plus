@@ -160,7 +160,7 @@ class ServerlessSNSPlusPlugin {
             this.getRegion())
         // If stack doesn't exist, return empty template
         .catch(() => {
-            return {TemplateBody: {Resources: {}}};
+            return {TemplateBody: '{"Resources": {}}'};
         })
         .then(template => JSON.parse(template.TemplateBody).Resources)
         .then(resources => Object.keys(resources)
