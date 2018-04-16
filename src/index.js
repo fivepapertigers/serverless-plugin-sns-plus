@@ -215,7 +215,7 @@ class ServerlessSNSPlusPlugin {
             if (variableString.match(snsPlusSyntax)){
                 return self.loadAndReplaceTopicFromVariable(variableString);
             }
-            return originalMethod(variableString);
+            return originalMethod.bind(self.serverless.variables)(variableString);
         }
         this.serverless.variables.getValueFromSource =
             getValueFromSource.bind(this.serverless.variables);

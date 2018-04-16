@@ -12,7 +12,8 @@
   "devDependencies": {
     "babel-eslint": "^8.0.2",
     "eslint": "^4.11.0",
-    "jasmine": "^2.8.0"
+    "jasmine": "^2.8.0",
+    "serverless": "^1.26.1"
   },
   "dependencies": {},
   "repository": {
