@@ -59,6 +59,9 @@ class ServerlessSNSPlusPlugin {
      * @return {Promise}
      */
     cleanUpOrphanedTopics () {
+        if (!this.serverless.service.custom || !this.serverless.service.custom.snsPlusClean) {
+            return BbPromise.resolve()
+        }
         this.serverless.cli.log("Cleaning up removed SNS topics...");
         return BbPromise.all(
             this.currentTopics.map(topicArn => {
